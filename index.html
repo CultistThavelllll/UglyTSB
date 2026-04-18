@@ -1,0 +1,1092 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Beta Brawler AI Edition</title>
+<style>
+    body { margin: 0; overflow: hidden; background: white; touch-action: none; user-select: none; font-family: sans-serif; transition: background 0.1s, transform 0.2s; }
+    #floor { position: absolute; bottom: 0; width: 100%; height: 20%; background: #4caf50; border-top: 5px solid #2e7d32; }
+    #ceiling { position: absolute; top: 0; width: 100%; height: 10px; background: transparent; }
+    #betaText { position: absolute; top: 10px; right: 10px; color: black; font-size: 14px; font-weight: bold; width: 200px; text-align: right; z-index: 100;}
+    
+    /* UI Buttons */
+    #menuBtn { position: absolute; top: 10px; left: 10px; width: 50px; height: 50px; background: black; border-radius: 50%; color: white; font-size: 30px; text-align: center; line-height: 50px; cursor: pointer; z-index: 100;}
+    #charMenu { position: absolute; top: -500px; left: 10px; transition: top 0.3s ease; display: flex; flex-direction: column; gap: 10px; z-index: 99;}
+    .charBtn { width: 189px; height: 50px; background: rgba(0,0,0,0.8); border-radius: 10px; display: flex; align-items: center; color: white; cursor: pointer; transition: background 0.2s;}
+    .charBtn:active { background: rgba(255,255,255,0.3); color: black; }
+    .charBtn img { width: 40px; height: 40px; margin: 0 10px; border-radius: 5px;}
+    .charBtn span { font-size: 16px; }
+    
+    .secretBtn { display: none; }
+    .secretBtn span { color: #ffd700; text-shadow: 1px 1px 2px red;}
+
+    /* Entities */
+    .entity { position: absolute; border-radius: 50%; transition: transform 0.1s; display: none;}
+    #player { width: 60px; height: 60px; background: black; bottom: 20%; left: 20%; z-index: 10; transition: left 0.1s, bottom 0.2s, background 0.2s, transform 0.2s;}
+    #dummy { width: 60px; height: 60px; background: red; bottom: 20%; right: 20%; z-index: 9; transition: all 0.2s ease-out;}
+    
+    /* Dummy HP */
+    #hpBarContainer { position: absolute; top: -20px; left: -10px; width: 80px; height: 10px; border: 2px solid black; background: black; }
+    #hpBar { width: 100%; height: 100%; background: #4caf50; transition: width 0.2s;}
+
+    /* Controls */
+    #controls { position: absolute; bottom: 90px; left: 10px; display: none; gap: 20px; z-index: 50;}
+    .arrowBtn { width: 60px; height: 60px; background: black; border-radius: 10px; color: white; font-size: 40px; text-align: center; line-height: 60px; opacity: 0.8;}
+    
+    /* Abilities */
+    #abilities { position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%); display: none; gap: 10px; z-index: 50; transition: bottom 0.5s ease;}
+    .ability { width: 60px; height: 60px; background: rgba(0,0,0,0.7); position: relative; overflow: hidden; color: white; font-size: 10px; text-align: center; display: flex; align-items: center; justify-content: center; border-radius: 5px;}
+    .ability img { width: 100%; height: 100%; position: absolute; top: 0; left: 0; z-index: -1; object-fit: cover;}
+    .cooldown { position: absolute; top: 0; left: 0; width: 100%; height: 0%; background: red; opacity: 0.8; z-index: 1;}
+    .ability span { position: relative; z-index: 2; pointer-events: none; word-wrap: break-word; line-height: 1;}
+    
+    /* Ultimate UI */
+    #kratosUltContainer { display: none; position: absolute; bottom: 80px; left: 50%; transform: translateX(-50%); width: 120px; height: 15px; border: 1px solid white; outline: 1px solid black; background: #3a0000; z-index: 60; cursor: pointer; transition: bottom 0.5s ease; }
+    #kratosUltBar { width: 0%; height: 100%; background: darkred; transition: width 0.3s; }
+    #kratosUltText { position: absolute; width: 100%; top: -1px; text-align: center; color: white; font-size: 12px; font-weight: bold; text-shadow: -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000; pointer-events: none; }
+    #kratosUltPrompt { display: none; position: absolute; top: 16px; width: 100%; text-align: center; color: white; font-size: 10px; font-weight: bold; text-shadow: -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000; }
+
+    /* Error popup */
+    #errorPopup { position: absolute; bottom: -50px; right: 10px; background: rgba(0,0,0,0.8); color: white; padding: 10px; border-radius: 5px; transition: bottom 0.3s; z-index: 200;}
+    
+    /* Effects */
+    .hitEffect { position: absolute; width: 100px; height: 100px; background: url('https://www.dropbox.com/scl/fi/0egh8aea6k5wph789kaqr/Picsart_26-03-29_23-58-56-259.png?rlkey=7rpzc6q79m4cnxj3f6bthuasq&st=rn7cod7b&dl=1'); background-size: contain; background-repeat: no-repeat; z-index: 20; pointer-events: none;}
+</style>
+</head>
+<body>
+
+<script>
+    // --- АНТИ-ХАКЕРСКАЯ ЗАЩИТА ОТ МАМКИНЫХ ПРОГРАММИСТОВ ---
+    const MY_EMAIL = "levyj1892@gmail.com";
+    if (MY_EMAIL !== "levyj1892@gmail.com") {
+        document.body.innerHTML = '<div style="background:black;color:white;width:100vw;height:100vh;display:flex;justify-content:center;align-items:center;font-size:50px;font-family:sans-serif;">Hell nah.</div>';
+        throw new Error("Game Over Hacker.");
+    }
+</script>
+
+<div id="betaText">This is a beta site, so there are no effects or many characters yet. :(</div>
+<div id="floor"></div>
+<div id="ceiling"></div>
+
+<div id="menuBtn">?</div>
+<div id="charMenu">
+    <div class="charBtn" id="junBtn">
+        <img src="https://www.dropbox.com/scl/fi/t5vihgjaot5xrpomxqomx/Picsart_26-03-29_20-00-21-955.png?rlkey=icgj80jwbnq6q3y80o93uuimn&st=hekzo5t0&dl=1">
+        <span>Jun</span>
+    </div>
+    <div class="charBtn" id="kratosBtn">
+        <img src="https://www.dropbox.com/scl/fi/cc0avufog536u2v1kn6yc/Picsart_26-03-31_17-56-08-980.png?rlkey=2pg93cjchvnqpfyn7y1fo6ehq&st=jmnax3im&dl=1">
+        <span>Kratos</span>
+    </div>
+    <div class="charBtn secretBtn" id="aliceBtn">
+        <img src="https://www.dropbox.com/scl/fi/twa59wzho0imkdzcf335m/noFilter.webp?rlkey=2eas0295vq5x07ppb9q2v71wy&st=3rujm4zi&dl=1">
+        <span>Alice</span>
+    </div>
+    <div class="charBtn secretBtn" id="agethaBtn">
+        <img src="https://www.dropbox.com/scl/fi/ik5bg8e4kvvbcrfl9nhbk/Picsart_26-03-30_20-43-08-658.png?rlkey=3lylmyy5oh54htru8unrk71ba&st=j26te4z3&dl=1">
+        <span>Agetha</span>
+    </div>
+    
+    <div class="charBtn" id="heroBtn" style="display: none;">
+        <img src="https://www.dropbox.com/scl/fi/mdyigw1txx5t9gk32d0zy/Picsart_26-04-18_16-07-02-422.png?rlkey=c5q3t2r4d9onvssmps36zih5o&st=5tbuucef&dl=1">
+        <span style="color: yellow; font-weight: bold; text-shadow: 1px 1px 2px black;">The Strongest Hero</span>
+    </div>
+</div>
+
+<div id="player" class="entity"></div>
+<div id="dummy" class="entity">
+    <div id="hpBarContainer"><div id="hpBar"></div></div>
+</div>
+
+<div id="controls">
+    <div class="arrowBtn" id="leftBtn">←</div>
+    <div class="arrowBtn" id="rightBtn">→</div>
+</div>
+
+<div id="kratosUltContainer">
+    <div id="kratosUltBar"></div>
+    <span id="kratosUltText">?</span>
+    <div id="kratosUltPrompt">Click on the scale.</div>
+</div>
+
+<div id="abilities"></div>
+
+<div id="errorPopup">You are already playing as this character.</div>
+
+<script>
+const preloaderImages = [
+    'https://www.dropbox.com/scl/fi/yqtlojf1wyeas9334pby5/Picsart_26-03-31_18-16-24-143.png?rlkey=vu1psmsm3zsxbttd05fnxvg8k&st=6cu0caj3&dl=1',
+    'https://www.dropbox.com/scl/fi/d6tzac7i9cehqopcl8226/Picsart_26-03-31_18-02-17-697.png?rlkey=38seu2ttdh2mk6al1ll2uyl51&st=4sgvvbig&dl=1'
+];
+preloaderImages.forEach(src => { let img = new Image(); img.src = src; });
+
+const sounds = {
+    click: new Audio('https://www.dropbox.com/scl/fi/x09p990c1cviddp5h8trp/dog-clicker_IygBqAk.mp3?rlkey=705j5zuiwe6ih6nc2u7uvwk9h&st=6dufrayh&dl=1'),
+    err: new Audio('https://www.dropbox.com/scl/fi/180x94j58omqfz19zq8nm/2_5352857319128475255.ogg?rlkey=ngbxm8l0gl2edq2zb0ipnexhg&st=1vfcvd64&dl=1'),
+    miss1: new Audio('https://www.dropbox.com/scl/fi/v8sttufwqrzo8is8p2i74/2_5352857319128475089.ogg?rlkey=qs9mbja974eyt5urr2fwuffez&st=35a7d6l4&dl=1'),
+    hit1: new Audio('https://www.dropbox.com/scl/fi/1m0ohrwr4gyrana7vcura/legends-battlegrounds-roblox-jun-move-1-made-with-Voicemod.mp3?rlkey=qtyy3progeezkqdbux379hz3w&st=739o1jvp&dl=1'),
+    miss2: new Audio('https://www.dropbox.com/scl/fi/v8sttufwqrzo8is8p2i74/2_5352857319128475089.ogg?rlkey=qs9mbja974eyt5urr2fwuffez&st=gsauvzdt&dl=1'),
+    hit2: new Audio('https://www.dropbox.com/scl/fi/stj178i0aa8zt8ytxdseu/legends-battlegrounds-roblox-jun-move-2-made-with-Voicemod.mp3?rlkey=vhn6gs3vzg1oxxdsdlv0mpxpu&st=ndi98jmc&dl=1'),
+    miss3: new Audio('https://www.dropbox.com/scl/fi/iony601eqg7yjx9037i5n/2_5352857319128475181.ogg?rlkey=ymxpyrydzelin8ridqcxbrwgx&st=j2045eho&dl=1'),
+    hit3: new Audio('https://www.dropbox.com/scl/fi/pwwvfom1sdmln0ecjws6z/legends-battlegrounds-roblox-jun-move-3-made-with-Voicemod.mp3?rlkey=hucs2soqxwaup7gq4ajdox3o3&st=6n9g2muw&dl=1'),
+    miss4: new Audio('https://www.dropbox.com/scl/fi/8uk4svj4tdu0wu5myydrh/2_5352857319128475189.ogg?rlkey=kef4s7msnij03wco71tfenajs&st=ledrjdei&dl=1'),
+    hit4: new Audio('https://www.dropbox.com/scl/fi/21j5zpc36cd95x2ftqohf/legends-battlegrounds-roblox-jun-move-4-made-with-Voicemod.mp3?rlkey=eena00dhdaq88sl6s73uhd0sr&st=qwbagnal&dl=1'),
+    combo: new Audio('https://www.dropbox.com/scl/fi/zxzku79kk2k07rj8mac20/2_5352857319128475221.ogg?rlkey=0tg9v3gyg96f0f5hsnv9xkfm4&st=x5s48bvu&dl=1'),
+    spike: new Audio('https://www.dropbox.com/scl/fi/2x14tnchjcdr9ug81em7i/alice-fpes-spike-trail-made-with-Voicemod.mp3?rlkey=5wm0gjitva0uopnordf8jv78d&st=asd3tn3e&dl=1'),
+    laugh: new Audio('https://www.dropbox.com/scl/fi/l5zwy7c999d38bcu3p74i/Giggle5.mp3.mpeg.mp3?rlkey=qk1cxwha8pix6xcpffmchcpvq&st=7nuwvjaf&dl=1'),
+    aliceHit: new Audio('https://www.dropbox.com/scl/fi/6iqu73vfjryrxthq43tmb/alice-hit-fpe_s-made-with-Voicemod.mp3?rlkey=54i2bf0zvj1t4l6eqnr6wrvj9&st=e11l2jy6&dl=1'),
+    swing: new Audio('https://www.dropbox.com/scl/fi/9ze30leo0ib24wl2h3ki5/alice-fpes-swing-made-with-Voicemod.mp3?rlkey=taf1lka6mdymmbli0ilxnofqo&st=52p73kh3&dl=1'),
+    aliTele1: new Audio('https://www.dropbox.com/scl/fi/kmzhpttlnwz1kmlryf9i0/alice-teleport-1-made-with-Voicemod.mp3?rlkey=nrg4t1vkvof562tqexdy32ois&st=nhy49lmm&dl=1'),
+    aliTele2: new Audio('https://www.dropbox.com/scl/fi/jzknyoni74rfp74k6b03f/alice-fpes-teleport-2-made-with-Voicemod.mp3?rlkey=eme6dkbx0k4ssrf69fozminsi&st=vwd73kyw&dl=1'),
+    ageStart: new Audio('https://www.dropbox.com/scl/fi/97qgrqkyf57u1horiy3ti/2_5357558019100023089.ogg?rlkey=dgaik6x5qvdrim9li46ett0l2&st=nxhhtjb8&dl=1'),
+    ageGlitch: new Audio('https://www.dropbox.com/scl/fi/ymz0logj7b3t5r67v1lt2/dragon-studio-glitch-effect-1-397982.mp3?rlkey=bjucf2q2a5pw9ypgqx13fqgvh&st=u0tae8f2&dl=1'),
+    ageMusic: new Audio('https://www.dropbox.com/scl/fi/r4i69rci5orgwv8nglm60/2_5357558019100023112.ogg?rlkey=e5u995etk4rdhe665m6c4x5m&st=1s97mprq&dl=1'),
+    ageKill: new Audio('https://www.dropbox.com/scl/fi/aeu1tkwk98bw6wccnfvjl/better-blood-splatter.mp3?rlkey=xdxaq81tx0n728926k7kv82f4&st=rk1whoxy&dl=1'),
+    kraAb1: new Audio('https://www.dropbox.com/scl/fi/kwblj9xgd6lzr80cll0nl/2_5359325763214548430.ogg?rlkey=16br7hv2eryahtzqzmbfqoz9o&st=kav0u6xi&dl=1'),
+    kraAb2: new Audio('https://www.dropbox.com/scl/fi/bzd4hw0ozybpvnkjv39ld/2_5359325763214548429.ogg?rlkey=b8rrez0ap21x3glz6k80nqyph&st=aposljcs&dl=1'),
+    kraAb3: new Audio('https://www.dropbox.com/scl/fi/x2uepp2modndzj8jexztv/2_5359325763214548428.ogg?rlkey=tz4satddip0j7poh0yogdhdbi&st=dd6r2olu&dl=1'),
+    kraUltVoice: new Audio('https://www.dropbox.com/scl/fi/e3jowztrfnvclwesbeukz/2_5359325763214548424.ogg?rlkey=xid4qar13msb33ejhv92iyyd6&st=rzbc0kx8&dl=1'),
+    kraUltExp: new Audio('https://www.dropbox.com/scl/fi/jx3lexlu139xmhq9j6jya/2_5359325763214548421.ogg?rlkey=0na62k26rzd8xjs0i92nr7enm&st=q7xhj4x0&dl=1'),
+    kraUltMusic: new Audio('https://www.dropbox.com/scl/fi/qhweyc4f4l5ghy4f9b2rn/2_5359325763214548418.ogg?rlkey=cqs0j99v7b6ncyu9txh5t534e&st=pudorh1o&dl=1'),
+    kraUltAb1: new Audio('https://www.dropbox.com/scl/fi/mxdhn97fq6mfnjvu79nr2/2_5359325763214548433.ogg?rlkey=e9lyvcbx88ffp0bsrno2g4xb3&st=oqnj4j6l&dl=1'),
+    kraUltAb2: new Audio('https://www.dropbox.com/scl/fi/wcutlhlddrqx4y4orwahe/2_5359325763214548426.ogg?rlkey=znaxcn8ii6bh9m2re1x844ty8&st=4ez4quxp&dl=1'),
+    
+    // THE STRONGEST HERO SOUNDS
+    heroS1: new Audio('https://www.dropbox.com/scl/fi/83lmskf06lc83rl1ermxd/2_5411556963580418761.ogg?rlkey=fw9wkdjbwqx7eqcze6xyro0dw&st=i9v8guwh&dl=1'),
+    heroS2: new Audio('https://www.dropbox.com/scl/fi/f6155rvitof1538ief2p6/2_5411556963580418763.ogg?rlkey=4smj1ciwjo3rwlfepdlhe3yyn&st=zjyjwbcg&dl=1'),
+    heroS3Miss: new Audio('https://www.dropbox.com/scl/fi/dtmg6os4wxppltyjx1rz0/2_5413808763394105501.ogg?rlkey=9qxhq0ur6bgv4p593iyjwux29&st=igwdkdho&dl=1'),
+    heroS3Hit: new Audio('https://www.dropbox.com/scl/fi/sfyg4mx08b9v1d0uo0rwf/2_5411556963580418765.ogg?rlkey=tltdz084hdn8qj6wt0ebm8bls&st=70yej275&dl=1'),
+    heroS4: new Audio('https://www.dropbox.com/scl/fi/4xvu82q5jgm207cohxv9i/2_5411556963580418767.ogg?rlkey=425kvv3a4y1rzx9d8nc4nahxj&st=s06iv2b1&dl=1'),
+    heroUltAct: new Audio('https://www.dropbox.com/scl/fi/bn7q0dve3spc98nxworo3/2_5411556963580418756.ogg?rlkey=n3b4k4av4zdpob5zoym8ew0mk&st=01cuhpti&dl=1'),
+    heroUlt1M: new Audio('https://www.dropbox.com/scl/fi/mq5bd5kn6egru476m8o7f/2_5411556963580418759.ogg?rlkey=rpdyphnu6lpa4g97h11xfgxfd&st=iv2gmig5&dl=1'),
+    heroUlt2M: new Audio('https://www.dropbox.com/scl/fi/05zgawst9rmjl6ajkja1y/2_5411556963580418754.ogg?rlkey=85me29jphxfy58poscs9kpiol&st=q7mjro4j&dl=1')
+};
+const playSnd = (s) => { s.currentTime = 0; s.play().catch(e => console.log('Sound error', e)); };
+
+let state = {
+    char: null,
+    menuOpen: false,
+    secretClicks: 0,
+    lastClickTime: 0,
+    locked: false, 
+    pX: 10, 
+    pY: 20, 
+    dX: 50, 
+    dY: 20,
+    dHP: 100,
+    moveL: false,
+    moveR: false,
+    lastMove1Time: 0,
+    ab1Hit: false, 
+    ab1T1: null, 
+    ab1T2: null,
+    slowed: false,
+    ultCharge: 0,
+    kratosUltActive: false,
+    heroUltActive: false,
+    kratosUltInterval: null
+};
+
+const el = (id) => document.getElementById(id);
+const player = el('player');
+const dummy = el('dummy');
+const hpBar = el('hpBar');
+const abContainer = el('abilities');
+const ultContainer = el('kratosUltContainer');
+const ultBar = el('kratosUltBar');
+const ultPrompt = el('kratosUltPrompt');
+
+setInterval(() => {
+    if(state.locked || !state.char) return;
+    let spd = state.slowed ? 0.25 : 0.5; 
+    if(state.moveL && state.pX > 0) state.pX -= spd;
+    if(state.moveR && state.pX < 90) state.pX += spd;
+    player.style.left = state.pX + '%';
+}, 16);
+
+const addTouch = (elem, isLeft) => {
+    elem.addEventListener('touchstart', (e) => { e.preventDefault(); if(isLeft) state.moveL=true; else state.moveR=true; });
+    elem.addEventListener('touchend', (e) => { e.preventDefault(); if(isLeft) state.moveL=false; else state.moveR=false; });
+    elem.addEventListener('mousedown', () => { if(isLeft) state.moveL=true; else state.moveR=true; });
+    elem.addEventListener('mouseup', () => { if(isLeft) state.moveL=false; else state.moveR=false; });
+};
+addTouch(el('leftBtn'), true);
+addTouch(el('rightBtn'), false);
+
+el('menuBtn').addEventListener('click', () => {
+    playSnd(sounds.click);
+    state.menuOpen = !state.menuOpen;
+    el('charMenu').style.top = state.menuOpen ? '70px' : '-500px';
+    
+    let now = Date.now();
+    if(now - state.lastClickTime < 400) state.secretClicks++; else state.secretClicks = 1;
+    state.lastClickTime = now;
+    if(state.secretClicks >= 20) {
+        el('aliceBtn').style.display = 'flex';
+        el('agethaBtn').style.display = 'flex';
+    }
+});
+
+const selectChar = (name) => {
+    if(state.locked) return;
+    if(state.char === name) {
+        playSnd(sounds.err);
+        el('errorPopup').style.bottom = '20px';
+        setTimeout(() => el('errorPopup').style.bottom = '-50px', 6000);
+        return;
+    }
+    playSnd(sounds.click);
+    state.char = name;
+    el('charMenu').style.top = '-500px';
+    state.menuOpen = false;
+    player.style.display = 'block';
+    dummy.style.display = 'block';
+    el('controls').style.display = 'flex';
+    abContainer.style.display = 'flex';
+    
+    ultContainer.style.display = 'block'; 
+    state.ultCharge = 0;
+    state.kratosUltActive = false;
+    state.heroUltActive = false;
+    ultBar.style.width = '0%';
+    ultPrompt.style.display = 'none';
+    
+    if (name === 'Kratos') {
+        el('kratosUltText').innerText = 'God Of War';
+    } else if (name === 'Hero') {
+        el('kratosUltText').innerText = 'Serious Mode';
+    } else {
+        el('kratosUltText').innerText = '?';
+    }
+
+    state.pX = 10; state.dX = 50;
+    player.style.left = state.pX+'%'; dummy.style.left = state.dX+'%';
+    player.style.background = 'black';
+    
+    if(name === 'Alice') {
+        player.style.background = 'red';
+        setTimeout(() => player.style.background = 'black', 2000);
+        setupAliceAbilities();
+    } else if (name === 'Agetha') {
+        setupAgethaAbilities();
+    } else if (name === 'Kratos') {
+        setupKratosAbilities();
+    } else if (name === 'Hero') {
+        setupHeroAbilities();
+    } else {
+        setupJunAbilities();
+    }
+};
+
+// Добавил проверку почты прям сюда, чтоб никто другой даже не смотрел в его сторону!
+if (MY_EMAIL === "levyj1892@gmail.com") {
+    el('heroBtn').style.display = 'flex';
+}
+
+el('heroBtn').addEventListener('click', () => {
+    if (MY_EMAIL !== "levyj1892@gmail.com") {
+        alert("ЭЭЭ! Куда жмешь?! Это перс только для избранного (levyj1892@gmail.com)! Брысь отсюда!");
+        return;
+    }
+    selectChar('Hero');
+});
+
+el('junBtn').addEventListener('click', () => selectChar('Jun'));
+el('kratosBtn').addEventListener('click', () => selectChar('Kratos'));
+el('aliceBtn').addEventListener('click', () => selectChar('Alice'));
+el('agethaBtn').addEventListener('click', () => selectChar('Agetha'));
+
+const addUltCharge = () => {
+    if (state.kratosUltActive || state.heroUltActive) return;
+    
+    let maxCharge = (state.char === 'Hero') ? 2 : 18;
+
+    if (state.ultCharge < maxCharge) {
+        state.ultCharge++;
+        ultBar.style.width = (state.ultCharge / maxCharge * 100) + '%';
+        if (state.ultCharge >= maxCharge && (state.char === 'Kratos' || state.char === 'Hero')) {
+            ultPrompt.style.display = 'block';
+            player.style.background = '#e6e6e6'; 
+            setTimeout(() => { player.style.transition = 'background 1s ease'; player.style.background = 'black'; }, 100);
+        }
+    }
+};
+
+const dealDamage = (dmg) => {
+    state.dHP -= dmg;
+    if(dmg > 0) addUltCharge(); 
+    
+    if(state.dHP <= 0) {
+        state.dHP = 0;
+        hpBar.style.width = '0%';
+        hpBar.style.background = 'black'; 
+        dummy.style.transform = `rotate(90deg) translateY(50px)`; 
+        setTimeout(() => { 
+            state.dHP = 100;
+            hpBar.style.width = '100%';
+            hpBar.style.background = '#4caf50';
+            state.dX = 50; dummy.style.left = state.dX+'%';
+            dummy.style.transform = 'none';
+        }, 4000);
+    } else {
+        hpBar.style.width = state.dHP + '%';
+        dummy.style.transform = `rotate(${(Math.random()-0.5)*90}deg) translate(${(Math.random()-0.5)*20}px, ${(Math.random()-0.5)*20}px)`;
+        setTimeout(() => dummy.style.transform = 'none', 500);
+    }
+};
+
+const createUIAbility = (name, icon, cooldownSec, actionFn, bgStyle = 'rgba(0,0,0,0.7)') => {
+    let div = document.createElement('div');
+    div.className = 'ability';
+    div.style.background = bgStyle;
+    if(icon) div.innerHTML = `<img src="${icon}">`;
+    div.innerHTML += `<span>${name}</span><div class="cooldown"></div>`;
+    let cdEl = div.querySelector('.cooldown');
+    let spanEl = div.querySelector('span');
+    let isReady = true;
+    div.addEventListener('click', () => {
+        if(!isReady) return;
+        if(actionFn(cdEl, spanEl) === false) return;
+        isReady = false;
+        cdEl.style.transition = 'none';
+        cdEl.style.height = '100%';
+        cdEl.style.background = 'red';
+        setTimeout(() => {
+            cdEl.style.transition = `height ${cooldownSec}s linear`;
+            cdEl.style.height = '0%';
+        }, 50);
+        setTimeout(() => {
+            cdEl.style.background = 'white'; 
+            cdEl.style.height = '100%';
+            setTimeout(() => { cdEl.style.height = '0%'; isReady = true; }, 300);
+        }, cooldownSec * 1000);
+    });
+    abContainer.appendChild(div);
+};
+
+const checkHit = () => Math.abs(state.pX - state.dX) < 25 && state.dHP > 0;
+const anim = (el, prop, val, time) => { el.style.transition = `all ${time}s`; el.style[prop] = val; };
+
+const spawnEffect = (url, w, h, x, y, dur) => {
+    let ef = document.createElement('div');
+    ef.style.cssText = `position:absolute; width:${w}px; height:${h}px; left:${x}%; bottom:${y}%; background:url('${url}'); background-size:contain; background-repeat:no-repeat; background-position:center bottom; z-index:20; pointer-events:none; transition: all 0.2s ease; transform: translateX(-50%);`;
+    document.body.appendChild(ef);
+    if(dur) setTimeout(() => { ef.style.opacity = '0'; setTimeout(()=>ef.remove(), 200); }, dur);
+    return ef;
+};
+
+// ================= THE STRONGEST HERO =================
+
+const revertHeroUlt = () => {
+    state.heroUltActive = false;
+    state.ultCharge = 0;
+    anim(ultContainer, 'bottom', '80px', 0.5);
+    ultBar.style.width = '0%';
+    setupHeroAbilities();
+};
+
+const setupHeroUltAbilities = () => {
+    abContainer.innerHTML = '';
+    anim(abContainer, 'bottom', '10px', 0.5);
+    
+    // Table Flip
+    createUIAbility('Table Flip', '', 15, () => {
+        if(state.locked) return false;
+        state.locked = true;
+        playSnd(sounds.heroUlt1M);
+        
+        // Freeze for 4s
+        setTimeout(() => {
+            anim(player, 'bottom', '120%', 0.5); // jumps high
+            setTimeout(() => {
+                anim(player, 'bottom', '20%', 0.2); // falls back
+                
+                // At 6.2s total (4s + 0.5 + 1.7 wait = 6.2s)
+                setTimeout(() => {
+                    let flash = spawnEffect('https://www.dropbox.com/scl/fi/pu9oeg8wlpu97re6et80s/Picsart_26-04-17_20-33-20-508.png?rlkey=uk6g64392ohrclbo884bn66cm&st=bvye0kkc&dl=1', 3000, 3000, 50, 0, 30);
+                    let giantSmoke = spawnEffect('https://www.dropbox.com/scl/fi/ejxv2ysqp5k1ucq1bt1n4/Picsart_26-04-17_20-33-43-669.png?rlkey=2jsssrquc0t6665uohwnn7d85&st=2jinudrb&dl=1', 1500, 800, 50, 0, 5800);
+                    let giantStones = spawnEffect('https://www.dropbox.com/scl/fi/kl40qnr47q4aj20sw8ona/Picsart_26-04-17_20-32-34-221.png?rlkey=n3runhinetm3a1d6zvxoq2njf&st=bhf2xvcj&dl=1', 1000, 1000, 50, -100, null);
+                    let split = spawnEffect('https://www.dropbox.com/scl/fi/e7ar6wbf9qf1yykz2gvpj/Picsart_26-04-17_20-32-11-926.png?rlkey=f5apusla826gdyc8vrizj9m05&st=4c57bbnt&dl=1', 1200, 300, 50, 0, 5800);
+                    
+                    anim(giantStones, 'bottom', '80%', 0.2);
+                    setTimeout(() => anim(giantStones, 'bottom', '-50%', 0.5), 2000);
+                    setTimeout(() => giantStones.remove(), 2500);
+
+                    // Dummy flies high
+                    dealDamage(100); 
+                    anim(dummy, 'bottom', '150%', 0.3);
+                    setTimeout(() => anim(dummy, 'bottom', '20%', 0.1), 1500);
+                    
+                }, 1500); 
+
+                // Unfreeze at 12s total (4 + 0.5 + 0.2 + 1.5 + 5.8)
+                setTimeout(() => {
+                    state.locked = false;
+                    revertHeroUlt();
+                }, 7300);
+
+            }, 500);
+        }, 4000);
+    });
+
+    // Serious Punch
+    createUIAbility('Serious Punch', '', 15, () => {
+        if(state.locked) return false;
+        state.locked = true;
+        
+        anim(abContainer, 'bottom', '-100px', 0.5);
+        el('charMenu').style.top = '-500px';
+
+        playSnd(sounds.heroUlt2M);
+        
+        // ВОТ ОНО! Камера зумится жестко в черную лысину, а не в облака!
+        document.body.style.transformOrigin = `${state.pX}% 80%`;
+        document.body.style.transform = `scale(1.3)`;
+        
+        player.style.transform = 'rotate(15deg)';
+        anim(player, 'left', (state.pX + 20) + '%', 5.2);
+
+        // After 5.2s
+        setTimeout(() => {
+            document.body.style.transformOrigin = 'center center'; // Возвращаем мир в норму
+            document.body.style.transform = 'none'; // reset zoom
+            player.style.transform = 'none';
+
+            let flash = spawnEffect('https://www.dropbox.com/scl/fi/pu9oeg8wlpu97re6et80s/Picsart_26-04-17_20-33-20-508.png?rlkey=uk6g64392ohrclbo884bn66cm&st=jmxcrw3k&dl=1', 2000, 2000, 50, 0, 20);
+            let gExp = spawnEffect('https://www.dropbox.com/scl/fi/56sch5iccq9ygreref960/Picsart_26-04-17_20-30-57-879.png?rlkey=tbn494pqxnu711ik59n7ugcim&st=hyqy6fyd&dl=1', 1200, 1000, state.pX+15, 0, 4800);
+            let fStones = spawnEffect('https://www.dropbox.com/scl/fi/e7u38dpa80j95lvqehzz9/Picsart_26-03-31_18-43-20-737.png?rlkey=ccvnn0rbrvtyxwfxnvq9zxqj4&st=iiwye6im&dl=1', 800, 800, state.pX+10, 20, null);
+            
+            anim(fStones, 'left', '150%', 0.5);
+            setTimeout(() => fStones.remove(), 500);
+
+            dealDamage(100);
+            anim(dummy, 'left', '150%', 0.2);
+
+            // Revert after 10s total
+            setTimeout(() => {
+                state.locked = false;
+                revertHeroUlt();
+            }, 4800);
+        }, 5200);
+    });
+};
+
+const setupHeroAbilities = () => {
+    abContainer.innerHTML = '';
+    anim(abContainer, 'bottom', '10px', 0.5);
+    
+    // Normal Punch
+    createUIAbility('Normal Punch', '', 5, () => {
+        if(state.locked) return false;
+        state.locked = true;
+        playSnd(sounds.heroS1);
+        
+        player.style.transform = 'rotate(15deg) translateY(5px)';
+        state.pX += 5;
+        anim(player, 'left', state.pX + '%', 0.1);
+        
+        setTimeout(() => {
+            state.pX -= 5;
+            anim(player, 'left', state.pX + '%', 0.1);
+            player.style.transform = 'none';
+
+            let smoke = spawnEffect('https://www.dropbox.com/scl/fi/bq6xhh2kvyphc4ddw4dg0/Picsart_26-04-17_20-31-10-822.png?rlkey=5glhiycb8e06tm28bmksynqf4&st=2iv9h8qh&dl=1', 400, 400, state.pX, 0, 5000);
+            let stones = spawnEffect('https://www.dropbox.com/scl/fi/ydjcvowbwjs7dnnrc867f/Picsart_26-04-12_17-53-10-406.png?rlkey=khjwr87vcs77yku0sj1h9z175&st=p7d1h8to&dl=1', 300, 300, state.pX, -50, null);
+            anim(stones, 'bottom', '40%', 0.2);
+            setTimeout(() => { anim(stones, 'bottom', '-50%', 0.5); setTimeout(()=>stones.remove(), 500); }, 2000);
+
+            if(checkHit()) {
+                dealDamage(49);
+                state.dX = 90;
+                anim(dummy, 'left', state.dX + '%', 0.2);
+                dummy.style.transform = 'rotate(90deg)';
+                setTimeout(() => {
+                    dummy.style.transform = 'none';
+                    spawnEffect('https://www.dropbox.com/scl/fi/9imp9peg1xh45fbkamcoy/Picsart_26-04-17_20-30-22-117.png?rlkey=7u3d3mx59oni3cg8uvnuhufs0&st=mtpn657v&dl=1', 150, 150, state.dX, 20, 500);
+                }, 3000);
+            }
+            
+            setTimeout(() => state.locked = false, 500);
+        }, 100);
+    });
+
+    // Many Fists
+    createUIAbility('Many Fists', '', 5, () => {
+        if(state.locked) return false;
+        state.locked = true;
+        playSnd(sounds.heroS2);
+        
+        let shk = setInterval(() => { player.style.transform = `translate(${(Math.random()-0.5)*10}px, ${(Math.random()-0.5)*10}px)`; }, 50);
+        setTimeout(() => { clearInterval(shk); player.style.transform = 'none'; }, 2000);
+
+        for(let i=0; i<15; i++) {
+            let fist = spawnEffect('https://www.dropbox.com/scl/fi/e42j04pdct2zs9kfskblk/Picsart_26-04-17_20-29-13-514.png?rlkey=ch7vq0bd4c5q2hswmoex6t5us&st=pnth2fja&dl=1', 80, 80, state.pX + (Math.random()-0.5)*30, 20 + Math.random()*40, 2000);
+        }
+
+        if(checkHit()) {
+            dealDamage(35);
+            state.dX = Math.min(90, state.dX + 10);
+            anim(dummy, 'left', state.dX + '%', 0.2);
+        }
+
+        setTimeout(() => state.locked = false, 950);
+    });
+
+    // Shove
+    createUIAbility('Shove', '', 4, () => {
+        if(state.locked) return false;
+        state.locked = true;
+        
+        state.pX += 5;
+        anim(player, 'left', state.pX + '%', 0.1);
+        setTimeout(() => { state.pX -= 5; anim(player, 'left', state.pX + '%', 0.1); }, 100);
+
+        if(checkHit()) {
+            playSnd(sounds.heroS3Hit);
+            dealDamage(25);
+            state.dX = Math.min(90, state.dX + 20);
+            anim(dummy, 'left', state.dX + '%', 0.2);
+            spawnEffect('https://www.dropbox.com/scl/fi/9imp9peg1xh45fbkamcoy/Picsart_26-04-17_20-30-22-117.png?rlkey=7u3d3mx59oni3cg8uvnuhufs0&st=srogda2f&dl=1', 150, 150, state.pX+5, 20, 1000);
+        } else {
+            playSnd(sounds.heroS3Miss);
+            let smk = spawnEffect('https://www.dropbox.com/scl/fi/9imp9peg1xh45fbkamcoy/Picsart_26-04-17_20-30-22-117.png?rlkey=7u3d3mx59oni3cg8uvnuhufs0&st=srogda2f&dl=1', 150, 150, state.pX, 20, 2000);
+            smk.style.opacity = '0.5';
+        }
+
+        setTimeout(() => state.locked = false, 450);
+    });
+
+    // Uppercut
+    createUIAbility('Uppercut', '', 6, () => {
+        if(state.locked) return false;
+        state.locked = true;
+        playSnd(sounds.heroS4);
+        
+        anim(player, 'bottom', '50%', 0.5);
+        let isH = checkHit();
+        if(isH) anim(dummy, 'bottom', '50%', 0.5);
+
+        setTimeout(() => {
+            anim(player, 'bottom', '20%', 0.5);
+            if(isH) {
+                anim(dummy, 'bottom', '20%', 0.5);
+                dealDamage(10);
+            }
+            setTimeout(() => {
+                spawnEffect('https://www.dropbox.com/scl/fi/9imp9peg1xh45fbkamcoy/Picsart_26-04-17_20-30-22-117.png?rlkey=7u3d3mx59oni3cg8uvnuhufs0&st=mtpn657v&dl=1', 150, 150, state.pX, 20, 1000);
+                if(isH) spawnEffect('https://www.dropbox.com/scl/fi/9imp9peg1xh45fbkamcoy/Picsart_26-04-17_20-30-22-117.png?rlkey=7u3d3mx59oni3cg8uvnuhufs0&st=mtpn657v&dl=1', 150, 150, state.dX, 20, 1000);
+                state.locked = false;
+            }, 500);
+        }, 600);
+    });
+};
+
+// Hero Ult Click Logic
+ultContainer.addEventListener('click', () => {
+    if(state.char === 'Hero' && state.ultCharge >= 2 && !state.heroUltActive) {
+        state.heroUltActive = true;
+        state.locked = true;
+        ultPrompt.style.display = 'none';
+        
+        anim(abContainer, 'bottom', '-100px', 0.5);
+        anim(ultContainer, 'bottom', '-100px', 0.5); // Шкала утекает вниз
+        
+        playSnd(sounds.heroUltAct);
+        
+        setTimeout(() => {
+            spawnEffect('https://www.dropbox.com/scl/fi/r67nzmg8pyqyco21fhw09/Picsart_26-04-17_20-30-09-059.png?rlkey=v584uj9ccb8f6hyti2ckkfktm&st=su9nw9x9&dl=1', 250, 250, state.pX, 0, 1500);
+        }, 1200);
+
+        setTimeout(() => {
+            state.locked = false;
+            setupHeroUltAbilities();
+        }, 2000);
+        return;
+    }
+
+    // Existing Kratos logic below
+    if(state.char !== 'Kratos' || state.ultCharge < 18 || state.kratosUltActive) return;
+    state.kratosUltActive = true;
+    state.locked = true; 
+    ultPrompt.style.display = 'none';
+    
+    anim(abContainer, 'bottom', '-100px', 0.5); 
+    
+    anim(player, 'transform', 'scaleY(0.5)', 0.2); 
+    playSnd(sounds.kraUltVoice);
+    
+    setTimeout(() => {
+        player.style.transform = 'none';
+        
+        anim(player, 'bottom', '70%', 0.1); 
+        setTimeout(() => {
+            anim(player, 'bottom', '20%', 0.1); 
+            
+            setTimeout(() => {
+                playSnd(sounds.kraUltExp);
+                spawnEffect('https://www.dropbox.com/scl/fi/avewgl3bd7eyb5yl7voos/Picsart_26-03-31_18-42-08-716.png?rlkey=ykbzho52crp1yxpfj5t21udgu&st=6yu7o3ax&dl=1', 500, 500, state.pX, 0, 2000); 
+                let stones = spawnEffect('https://www.dropbox.com/scl/fi/e7u38dpa80j95lvqehzz9/Picsart_26-03-31_18-43-20-737.png?rlkey=ccvnn0rbrvtyxwfxnvq9zxqj4&st=huc77ys9&dl=1', 400, 400, state.pX, -100, null);
+                setTimeout(() => anim(stones, 'bottom', '150%', 1.5), 50);
+                setTimeout(() => stones.remove(), 2000);
+                
+                setTimeout(() => {
+                    state.locked = false;
+                    playSnd(sounds.kraUltMusic); 
+                    setupKratosUltAbilities(); 
+                    
+                    ultBar.style.transition = 'width 55s linear';
+                    ultBar.style.width = '0%';
+                    
+                    setTimeout(() => {
+                        if(state.char === 'Kratos' && state.kratosUltActive) {
+                            state.kratosUltActive = false;
+                            state.ultCharge = 0;
+                            ultBar.style.transition = 'width 0.2s';
+                            anim(abContainer, 'bottom', '-100px', 0.5); 
+                            setTimeout(setupKratosAbilities, 500); 
+                        }
+                    }, 55000);
+                }, 2000);
+            }, 100);
+        }, 100);
+    }, 2000); 
+});
+
+// ================= EXISTING CHARACTERS =================
+
+const setupKratosAbilities = () => {
+    abContainer.innerHTML = '';
+    anim(abContainer, 'bottom', '10px', 0.5); 
+    
+    createUIAbility('Rampage Fury', '', 17, () => {
+        if(state.locked) return false;
+        playSnd(sounds.kraAb1);
+        state.slowed = true; 
+        
+        let chain1 = spawnEffect('https://www.dropbox.com/scl/fi/d9p8zpshbrurqcfzzksio/Picsart_26-03-31_17-58-47-839.png?rlkey=6qrc3yit326uye434twraai8k&st=c2buayfa&dl=1', 150, 300, state.pX - 10, 100, null);
+        let chain2 = spawnEffect('https://www.dropbox.com/scl/fi/d9p8zpshbrurqcfzzksio/Picsart_26-03-31_17-58-47-839.png?rlkey=6qrc3yit326uye434twraai8k&st=c2buayfa&dl=1', 150, 300, state.pX + 10, 100, null);
+        
+        setTimeout(() => { anim(chain1, 'bottom', '20%', 0.15); anim(chain2, 'bottom', '20%', 0.15); }, 50);
+        
+        let hitInterval = setInterval(() => {
+            chain1.style.left = (state.pX - 10) + '%';
+            chain2.style.left = (state.pX + 10) + '%';
+            chain1.style.transform = `translateX(-50%) rotate(${(Math.random()-0.5)*20}deg)`;
+            chain2.style.transform = `translateX(-50%) rotate(${(Math.random()-0.5)*20}deg)`;
+        }, 100);
+
+        setTimeout(() => {
+            clearInterval(hitInterval);
+            anim(chain1, 'bottom', '-100%', 0.2);
+            anim(chain2, 'bottom', '-100%', 0.2);
+            
+            if(checkHit()) {
+                dealDamage(35);
+                state.dX = Math.min(90, state.dX+15); 
+                anim(dummy, 'left', state.dX+'%', 0.2); 
+            }
+
+            setTimeout(() => { chain1.remove(); chain2.remove(); }, 200);
+            state.slowed = false;
+            let flame = spawnEffect('https://www.dropbox.com/scl/fi/4rd9gxvwct0bc2u9gxh27/Picsart_26-03-31_17-56-26-531.png?rlkey=t7fb5y0w8usffd15xm317l3fl&st=tkqkwhbn&dl=1', 150, 150, state.pX, 20, 200);
+            flame.style.transform = 'translateX(-50%) scale(0.1)';
+            setTimeout(() => flame.style.transform = 'translateX(-50%) scale(1)', 50);
+        }, 2050); 
+    });
+
+    createUIAbility('Mist Of Hell', '', 15, () => {
+        if(state.locked) return false;
+        state.locked = true;
+        playSnd(sounds.kraAb2);
+        
+        anim(player, 'bottom', '60%', 0.2); 
+        let axe = spawnEffect('https://www.dropbox.com/scl/fi/9g8vx431qf2ouk47d425p/Picsart_26-03-31_18-00-10-891.png?rlkey=575ausrlaidms2b3j7ustzqmh&st=70muerw7&dl=1', 160, 160, state.pX, 20, null);
+        setTimeout(() => anim(axe, 'bottom', '80%', 0.2), 50);
+        
+        let isHit = checkHit();
+
+        setTimeout(() => {
+            anim(player, 'bottom', '20%', 0.1);
+            anim(axe, 'bottom', '20%', 0.1);
+            axe.style.transform = 'translateX(-50%) rotate(-90deg)';
+            
+            if(isHit) {
+                dummy.style.bottom = '40%';
+                setTimeout(() => { 
+                    dummy.style.bottom = '20%'; 
+                    dealDamage(20);
+                    let ice = spawnEffect('https://www.dropbox.com/scl/fi/agm2hki7n6bj4vv9w8wvu/Picsart_26-03-31_17-59-17-250.png?rlkey=14roeq94xz8pon85fczkffqyc&st=qx41vfj7&dl=1', 480, 480, state.dX, 20, null);
+                    dummy.style.transform = 'translateY(-30px)'; 
+                    setTimeout(() => dummy.style.transform = 'none', 500);
+                    setTimeout(() => { anim(ice, 'bottom', '-50%', 0.3); setTimeout(()=>ice.remove(), 300); }, 3000);
+                }, 100);
+            } else {
+                let ice = spawnEffect('https://www.dropbox.com/scl/fi/agm2hki7n6bj4vv9w8wvu/Picsart_26-03-31_17-59-17-250.png?rlkey=14roeq94xz8pon85fczkffqyc&st=qx41vfj7&dl=1', 480, 480, state.pX, 20, null);
+                setTimeout(() => { anim(ice, 'bottom', '-50%', 0.3); setTimeout(()=>ice.remove(), 300); }, 3000);
+            }
+            
+            let smoke = spawnEffect('https://www.dropbox.com/scl/fi/avewgl3bd7eyb5yl7voos/Picsart_26-03-31_18-42-08-716.png?rlkey=ykbzho52crp1yxpfj5t21udgu&st=cj2vicu9&dl=1', 150, 100, state.pX, 20, null);
+            setTimeout(() => { anim(smoke, 'bottom', '-50%', 0.2); setTimeout(()=>smoke.remove(), 200); }, 200);
+
+            setTimeout(() => axe.remove(), 200);
+            setTimeout(() => state.locked = false, 200);
+        }, 500);
+    });
+
+    createUIAbility('Retribution', '', 10, () => {
+        if(state.locked) return false;
+        state.locked = true;
+        playSnd(sounds.kraAb3);
+        
+        let knife1 = spawnEffect('https://www.dropbox.com/scl/fi/7foqpppdn8a9dk76d8kiu/Picsart_26-03-31_18-02-00-999.png?rlkey=cpprmhc5xpndbu11ttu4ug7rf&st=698qhu9x&dl=1', 360, 360, state.pX, 20, null);
+        let knife2 = spawnEffect('https://www.dropbox.com/scl/fi/7foqpppdn8a9dk76d8kiu/Picsart_26-03-31_18-02-00-999.png?rlkey=cpprmhc5xpndbu11ttu4ug7rf&st=698qhu9x&dl=1', 360, 360, state.pX, 20, null);
+
+        knife1.style.transform = 'translateX(-50%) translateY(30%)';
+        knife2.style.transform = 'translateX(-50%) translateY(30%)';
+
+        setTimeout(() => { 
+            knife1.style.transform = 'translateX(-50%) translateY(30%) rotate(90deg)'; 
+            spawnEffect('https://www.dropbox.com/scl/fi/4rd9gxvwct0bc2u9gxh27/Picsart_26-03-31_17-56-26-531.png?rlkey=t7fb5y0w8usffd15xm317l3fl&st=c3zbrf8o&dl=1', 50, 50, state.pX+10, 30, 200); 
+        }, 100);
+        
+        let k2Ticks = 0;
+        let k2Int = setInterval(() => {
+            k2Ticks++;
+            knife2.style.transform = `translateX(-50%) translateY(30%) rotate(${k2Ticks%2===0?90:-45}deg)`;
+            spawnEffect('https://www.dropbox.com/scl/fi/4rd9gxvwct0bc2u9gxh27/Picsart_26-03-31_17-56-26-531.png?rlkey=t7fb5y0w8usffd15xm317l3fl&st=c3zbrf8o&dl=1', 50, 50, state.pX+15, 30, 200);
+            if(k2Ticks >= 3) clearInterval(k2Int);
+        }, 200);
+
+        let isHit = checkHit();
+
+        setTimeout(() => {
+            knife1.remove(); knife2.remove();
+            if(isHit) {
+                dealDamage(11);
+                state.dX = Math.min(90, state.dX+15);
+                anim(dummy, 'left', state.dX+'%', 0.3); 
+            }
+            state.locked = false;
+        }, 2000);
+    });
+};
+
+const setupKratosUltAbilities = () => {
+    abContainer.innerHTML = '';
+    anim(abContainer, 'bottom', '10px', 0.5);
+    
+    createUIAbility('Chain of God', 'https://www.dropbox.com/scl/fi/yqtlojf1wyeas9334pby5/Picsart_26-03-31_18-16-24-143.png?rlkey=vu1psmsm3zsxbttd05fnxvg8k&st=6cu0caj3&dl=1', 35, () => {
+        if(state.locked) return false;
+        state.locked = true; 
+        playSnd(sounds.kraUltAb1);
+        
+        let pCentX = state.pX;
+        let pCentY = 20;
+
+        let chainL = spawnEffect('https://www.dropbox.com/scl/fi/yqtlojf1wyeas9334pby5/Picsart_26-03-31_18-16-24-143.png?rlkey=vu1psmsm3zsxbttd05fnxvg8k&st=6cu0caj3&dl=1', 400, 600, pCentX - 10, 100, null);
+        let chainR = spawnEffect('https://www.dropbox.com/scl/fi/yqtlojf1wyeas9334pby5/Picsart_26-03-31_18-16-24-143.png?rlkey=vu1psmsm3zsxbttd05fnxvg8k&st=6cu0caj3&dl=1', 400, 600, pCentX + 10, 100, null);
+        
+        setTimeout(() => { anim(chainL, 'bottom', '0%', 0.1); anim(chainR, 'bottom', '0%', 0.1); }, 50);
+
+        let totalTime = 4000; 
+        let beatInterval = setInterval(() => {
+            chainL.style.transform = `translateX(-50%) translate(${(Math.random()-0.5)*30}px, ${(Math.random()-0.5)*30}px) rotate(${(Math.random()-0.5)*60}deg)`;
+            chainR.style.transform = `translateX(-50%) translate(${(Math.random()-0.5)*30}px, ${(Math.random()-0.5)*30}px) rotate(${(Math.random()-0.5)*60}deg)`;
+            
+            if(Math.abs(state.pX - state.dX) < 40 && state.dHP > 0) {
+                 dummy.style.left = (state.dX + (Math.random()-0.5)*5) + '%';
+            }
+
+        }, 50); 
+
+        setTimeout(() => {
+            clearInterval(beatInterval);
+            
+            anim(chainL, 'bottom', '100%', 0.2);
+            anim(chainR, 'bottom', '100%', 0.2);
+            setTimeout(() => { chainL.remove(); chainR.remove(); }, 200);
+
+            if(Math.abs(state.pX - state.dX) < 45 && state.dHP > 0) {
+                dealDamage(85); 
+                state.dX = Math.min(90, state.dX+30); 
+                anim(dummy, 'left', state.dX+'%', 0.3);
+                spawnEffect('https://www.dropbox.com/scl/fi/d6tzac7i9cehqopcl8226/Picsart_26-03-31_18-02-17-697.png?rlkey=38seu2ttdh2mk6al1ll2uyl51&st=4sgvvbig&dl=1', 1200, 1200, state.dX, 20, 2000); 
+            }
+            state.locked = false;
+        }, totalTime);
+
+    });
+
+    createUIAbility('Mighty Fists of God', '', 28, () => {
+        if(state.locked) return false;
+        state.locked = true;
+        playSnd(sounds.kraUltAb2);
+        
+        let oldX = state.pX;
+        spawnEffect('https://www.dropbox.com/scl/fi/avewgl3bd7eyb5yl7voos/Picsart_26-03-31_18-42-08-716.png?rlkey=ykbzho52crp1yxpfj5t21udgu&st=vqeax22q&dl=1', 900, 900, oldX, 20, 1000); 
+        
+        state.pX = Math.min(90, state.pX + 30); 
+        anim(player, 'left', state.pX+'%', 0.1);
+        
+        setTimeout(() => {
+            if(Math.abs(state.pX - state.dX) < 35 && state.dHP > 0) {
+                player.style.bottom = '50%';
+                let pInt = setInterval(() => {
+                    player.style.transform = `translate(${(Math.random()-0.5)*60}px, ${(Math.random()-0.5)*60}px) rotate(${Math.random()*360}deg)`; 
+                }, 20); 
+                
+                setTimeout(() => {
+                    clearInterval(pInt);
+                    player.style.transform = 'none';
+                    player.style.bottom = '20%';
+                    dealDamage(55);
+                    dummy.style.bottom = '10%'; 
+                    setTimeout(() => dummy.style.bottom = '20%', 300);
+                    state.locked = false;
+                }, 4000);
+            } else {
+                state.locked = false;
+            }
+        }, 150);
+    });
+};
+
+const setupJunAbilities = () => {
+    abContainer.innerHTML = '';
+    anim(abContainer, 'bottom', '10px', 0.5);
+    createUIAbility('Climpse Of Power', '', 22, () => {
+        if(state.locked) return false; 
+        state.lastMove1Time = Date.now(); 
+        state.locked = true;
+        if(checkHit()) {
+            state.ab1Hit = true;
+            playSnd(sounds.hit1);
+            
+            let aura = spawnEffect('https://www.dropbox.com/scl/fi/8sk15xbebfdwtr74apoma/Picsart_26-04-12_17-53-46-834.png?rlkey=v9hpa8cc98y352tjjzuft1rih&st=of8ibozl&dl=1', 120, 120, state.dX, 20, 50);
+            aura.style.transition = 'opacity 0.05s ease';
+            setTimeout(() => aura.style.opacity = '0', 20);
+
+            anim(player, 'left', (state.dX-5)+'%', 0.2); 
+            state.ab1T1 = setTimeout(() => { 
+                dealDamage(16.5); 
+                state.dX = Math.min(90, state.dX+10); 
+                dummy.style.left = state.dX+'%'; 
+                
+                let rocks = spawnEffect('https://www.dropbox.com/scl/fi/ydjcvowbwjs7dnnrc867f/Picsart_26-04-12_17-53-10-406.png?rlkey=khjwr87vcs77yku0sj1h9z175&st=wpc3tybs&dl=1', 150, 150, state.dX, -10, 200);
+                anim(rocks, 'bottom', '20%', 0.1);
+            }, 1000);
+            state.ab1T2 = setTimeout(() => state.locked = false, 2850);
+        } else {
+            state.ab1Hit = false;
+            playSnd(sounds.miss1);
+            player.style.transform = 'scaleY(0.8)'; setTimeout(() => player.style.transform='none', 200);
+            setTimeout(() => state.locked = false, 1000);
+        }
+    });
+
+    createUIAbility('Wolf Fang Flash', '', 24, () => {
+        if(state.locked) return false;
+        state.locked = true;
+        if(checkHit()) {
+            playSnd(sounds.hit2);
+            anim(player, 'bottom', '30%', 0.3); 
+            
+            let aura = spawnEffect('https://www.dropbox.com/scl/fi/8sk15xbebfdwtr74apoma/Picsart_26-04-12_17-53-46-834.png?rlkey=v9hpa8cc98y352tjjzuft1rih&st=of8ibozl&dl=1', 120, 120, state.dX, 20, 1500);
+
+            setTimeout(() => { dealDamage(14.5); dummy.style.bottom = '30%'; state.dX = Math.min(90, state.dX+15); anim(dummy, 'left', state.dX+'%', 0.5); }, 500);
+            setTimeout(() => { 
+                player.style.bottom='20%'; 
+                dummy.style.bottom='20%'; 
+                aura.remove();
+                spawnEffect('https://www.dropbox.com/scl/fi/ydjcvowbwjs7dnnrc867f/Picsart_26-04-12_17-53-10-406.png?rlkey=khjwr87vcs77yku0sj1h9z175&st=wpc3tybs&dl=1', 150, 150, state.dX, 20, 200);
+            }, 1500);
+            setTimeout(() => state.locked = false, 2990);
+        } else {
+            playSnd(sounds.miss2);
+            spawnEffect('https://www.dropbox.com/scl/fi/8sk15xbebfdwtr74apoma/Picsart_26-04-12_17-53-46-834.png?rlkey=v9hpa8cc98y352tjjzuft1rih&st=of8ibozl&dl=1', 120, 120, state.pX, 20, 300);
+            state.pX = Math.max(0, state.pX - 15);
+            anim(player, 'left', state.pX+'%', 0.3);
+            setTimeout(() => state.locked = false, 1000);
+        }
+    });
+
+    createUIAbility('Fang Dance', '', 28, () => {
+        if(state.locked) return false;
+        state.locked = true;
+        if(checkHit()) {
+            playSnd(sounds.hit3);
+            state.pX = state.dX+5;
+            anim(player, 'left', state.pX+'%', 0.2); 
+            
+            let aura = spawnEffect('https://www.dropbox.com/scl/fi/8sk15xbebfdwtr74apoma/Picsart_26-04-12_17-53-46-834.png?rlkey=v9hpa8cc98y352tjjzuft1rih&st=of8ibozl&dl=1', 150, 150, state.dX, 20, 3000);
+
+            setTimeout(() => dealDamage(18.5), 1000);
+            setTimeout(() => { 
+                dummy.style.transform = 'rotate(180deg) translateY(-50px)'; 
+                state.dX = Math.max(0, state.dX-10); 
+                anim(dummy, 'left', state.dX+'%', 0.5); 
+                
+                aura.remove();
+                spawnEffect('https://www.dropbox.com/scl/fi/ydjcvowbwjs7dnnrc867f/Picsart_26-04-12_17-53-10-406.png?rlkey=khjwr87vcs77yku0sj1h9z175&st=wpc3tybs&dl=1', 180, 180, state.dX, 20, 200);
+            }, 3000);
+            setTimeout(() => state.locked = false, 3500);
+        } else {
+            playSnd(sounds.miss3);
+            state.pX = Math.min(90, state.pX + 25);
+            anim(player, 'left', state.pX+'%', 0.3); 
+            anim(player, 'bottom', '40%', 0.3);
+            setTimeout(() => anim(player, 'bottom', '20%', 0.3), 300);
+            setTimeout(() => state.locked = false, 3000);
+        }
+    });
+
+    createUIAbility('Virgule Cascade', '', 26, () => {
+        if(state.ab1Hit && Date.now() - state.lastMove1Time < 500) {
+            clearTimeout(state.ab1T1);
+            clearTimeout(state.ab1T2);
+            state.locked = true;
+            playSnd(sounds.combo);
+            let comboTicks = 0;
+            let comboInterval = setInterval(() => {
+                comboTicks++;
+                
+                spawnEffect('https://www.dropbox.com/scl/fi/8sk15xbebfdwtr74apoma/Picsart_26-04-12_17-53-46-834.png?rlkey=v9hpa8cc98y352tjjzuft1rih&st=of8ibozl&dl=1', 100, 100, state.dX + (Math.random()-0.5)*15, 20 + Math.random()*20, 50);
+                spawnEffect('https://www.dropbox.com/scl/fi/ydjcvowbwjs7dnnrc867f/Picsart_26-04-12_17-53-10-406.png?rlkey=khjwr87vcs77yku0sj1h9z175&st=wpc3tybs&dl=1', 100, 100, state.dX + (Math.random()-0.5)*15, 20, 50);
+
+                player.style.left = (state.dX + (comboTicks%2===0?5:-5)) + '%';
+                dummy.style.transform = `rotate(${Math.random()*360}deg)`;
+                if(comboTicks > 20) {
+                    clearInterval(comboInterval);
+                    dealDamage(45.5);
+                    dummy.style.bottom = '80%'; 
+                    player.style.left = state.dX+'%'; player.style.bottom = '70%'; 
+                    
+                    let fRocks = spawnEffect('https://www.dropbox.com/scl/fi/ydjcvowbwjs7dnnrc867f/Picsart_26-04-12_17-53-10-406.png?rlkey=khjwr87vcs77yku0sj1h9z175&st=wpc3tybs&dl=1', 250, 250, state.dX, 70, 500);
+                    anim(fRocks, 'bottom', '150%', 0.5);
+                    spawnEffect('https://www.dropbox.com/scl/fi/avewgl3bd7eyb5yl7voos/Picsart_26-03-31_18-42-08-716.png?rlkey=ykbzho52crp1yxpfj5t21udgu&st=uopf00bx&dl=1', 300, 150, state.dX, 20, 500);
+
+                    setTimeout(() => { dummy.style.bottom = '20%'; player.style.bottom = '20%'; }, 2000);
+                }
+            }, 100);
+            setTimeout(() => state.locked = false, 3000); 
+            return;
+        }
+        if(state.locked) return false;
+        state.locked = true;
+        if(checkHit()) {
+            playSnd(sounds.hit4);
+            anim(player, 'left', state.dX+'%', 0.1);
+            
+            let aura = spawnEffect('https://www.dropbox.com/scl/fi/8sk15xbebfdwtr74apoma/Picsart_26-04-12_17-53-46-834.png?rlkey=v9hpa8cc98y352tjjzuft1rih&st=of8ibozl&dl=1', 150, 150, state.dX, 20, 2000);
+
+            setTimeout(() => { dealDamage(19.5); dummy.style.bottom='50%'; }, 500);
+            setTimeout(() => { 
+                dummy.style.bottom='20%'; 
+                state.dX = Math.min(90, state.dX+20); 
+                anim(dummy, 'left', state.dX+'%', 0.5); 
+                
+                aura.remove();
+                spawnEffect('https://www.dropbox.com/scl/fi/ydjcvowbwjs7dnnrc867f/Picsart_26-04-12_17-53-10-406.png?rlkey=khjwr87vcs77yku0sj1h9z175&st=wpc3tybs&dl=1', 150, 150, state.dX, 20, 200);
+
+            }, 2000);
+            setTimeout(() => state.locked = false, 3990);
+        } else {
+            playSnd(sounds.miss4);
+            
+            let knife = spawnEffect('https://www.dropbox.com/scl/fi/raw5qbwwezi1wa8nfrsci/Picsart_26-04-12_17-56-37-877.png?rlkey=osjubsap2ykd7xsurb9c60aip&st=830o3y0w&dl=1', 120, 120, state.pX + 5, 20, 500);
+            let kTicks = 0;
+            let kInt = setInterval(() => {
+                kTicks++;
+                knife.style.transform = `translateX(-50%) rotate(${kTicks%2===0 ? 60 : -30}deg) scale(1.2)`;
+                if(kTicks >= 6) clearInterval(kInt);
+            }, 50);
+
+            setTimeout(() => state.locked = false, 1250);
+        }
+    });
+};
+
+const setupAliceAbilities = () => {
+    abContainer.innerHTML = '';
+    anim(abContainer, 'bottom', '10px', 0.5);
+    createUIAbility('', 'https://www.dropbox.com/scl/fi/jfz3ikkfzadhf10qwdy1z/NewSpikesIcon.webp?rlkey=ewn4lf120guxsrqdyb7p8ttc3&st=9qxpky1j&dl=1', 2.5, (cdEl, spanEl) => {
+        if(state.locked) return false;
+        state.locked = true;
+        playSnd(sounds.spike); playSnd(sounds.laugh);
+        for(let i=0; i<=100; i+=3) {
+            let spike = document.createElement('div');
+            spike.style.cssText = `position:absolute; bottom:20%; left:${i}%; width:10px; height:0px; background:black; border-left: 1px solid #222; z-index:8; transition:height 0.15s ease-out;`;
+            document.body.appendChild(spike);
+            setTimeout(() => spike.style.height = '150vh', 50 + Math.random()*50);
+            setTimeout(() => { spike.style.height = '0px'; setTimeout(()=>spike.remove(), 200); }, 2000);
+        }
+        setTimeout(() => { if(state.dHP > 0) { playSnd(sounds.aliceHit); dealDamage(1400); } }, 500);
+        setTimeout(() => { state.locked = false; }, 200);
+    });
+
+    createUIAbility('', 'https://www.dropbox.com/scl/fi/twyzmrfzb83ykljzte3sr/AttackIcon.webp?rlkey=hgqkyfbxqzwdyttdqp1u63wni&st=843px1qb&dl=1', 0.5, () => {
+        if(state.locked) return false;
+        state.locked = true;
+        anim(player, 'transform', 'scaleY(1.2)', 0.1);
+        setTimeout(() => anim(player, 'transform', 'none', 0.1), 100);
+        if(checkHit()) {
+            playSnd(sounds.aliceHit);
+            dealDamage(35);
+            let hitEf = document.createElement('div');
+            hitEf.className = 'hitEffect'; hitEf.style.left = state.dX+'%'; hitEf.style.bottom = '20%';
+            document.body.appendChild(hitEf);
+            setTimeout(()=>hitEf.remove(), 500);
+            state.dX = Math.min(90, state.dX+15);
+            anim(dummy, 'left', state.dX+'%', 0.2); 
+        } else {
+            playSnd(sounds.swing);
+        }
+        setTimeout(() => state.locked = false, 50);
+    });
+
+    createUIAbility('', 'https://www.dropbox.com/scl/fi/7e7o5k8rtkafat43uvi7b/NewTeleportIcon.webp?rlkey=21pq2u7q6990hlx8nr1462an6&st=14lvq638&dl=1', 5, () => {
+        if(state.locked) return false;
+        state.locked = true;
+        player.style.background = '#ffcccc';
+        playSnd(sounds.aliTele1);
+        setTimeout(() => {
+            playSnd(sounds.aliTele2);
+            player.style.background = 'black'; 
+            let dir = state.dX > state.pX ? 20 : -20;
+            state.pX = Math.max(0, Math.min(90, state.pX + dir));
+            player.style.left = state.pX + '%';
+            state.locked = false;
+        }, 1000);
+    });
+};
+
+const setupAgethaAbilities = () => {
+    abContainer.innerHTML = '';
+    anim(abContainer, 'bottom', '10px', 0.5);
+    createUIAbility('Glitch Spread', '', 19, () => {
+        if(state.locked) return false;
+        state.locked = true;
+        document.body.style.background = 'white';
+        playSnd(sounds.ageStart);
+        setTimeout(() => {
+            document.body.style.background = `url('https://www.dropbox.com/scl/fi/1ocze48nr549rezystyuf/Picsart_26-03-30_20-43-29-688.jpg?rlkey=n7wj5w9ol0ksinaykp5pf7k0s&st=5shabgco&dl=1')`;
+            document.body.style.backgroundSize = 'cover';
+            playSnd(sounds.ageGlitch);
+            playSnd(sounds.ageMusic);
+        }, 200);
+        setTimeout(() => {
+            dealDamage(150000);
+            dummy.style.transform = 'scaleY(0.2) scaleX(2.5) rotate(45deg) translateY(-100px)';
+            if(state.dHP <= 0) playSnd(sounds.ageKill);
+        }, 2000);
+        setTimeout(() => {
+            document.body.style.background = 'white';
+            state.locked = false;
+        }, 6000);
+    }, 'rgba(0,0,0,0.5)');
+};
+</script>
+</body>
+</html>
+
