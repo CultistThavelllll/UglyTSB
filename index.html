@@ -88,7 +88,7 @@
         <span>Agetha</span>
     </div>
     
-    <div class="charBtn" id="heroBtn" style="display: none;">
+    <div class="charBtn" id="heroBtn">
         <img src="https://www.dropbox.com/scl/fi/mdyigw1txx5t9gk32d0zy/Picsart_26-04-18_16-07-02-422.png?rlkey=c5q3t2r4d9onvssmps36zih5o&st=5tbuucef&dl=1">
         <span style="color: yellow; font-weight: bold; text-shadow: 1px 1px 2px black;">The Strongest Hero</span>
     </div>
@@ -232,6 +232,7 @@ const selectChar = (name) => {
     if(state.locked) return;
     if(state.char === name) {
         playSnd(sounds.err);
+        el('errorPopup').innerText = "You are already playing as this character.";
         el('errorPopup').style.bottom = '20px';
         setTimeout(() => el('errorPopup').style.bottom = '-50px', 6000);
         return;
@@ -279,17 +280,16 @@ const selectChar = (name) => {
     }
 };
 
-// Добавил проверку почты прям сюда, чтоб никто другой даже не смотрел в его сторону!
-if (MY_EMAIL === "levyj1892@gmail.com") {
-    el('heroBtn').style.display = 'flex';
-}
-
 el('heroBtn').addEventListener('click', () => {
-    if (MY_EMAIL !== "levyj1892@gmail.com") {
-        alert("ЭЭЭ! Куда жмешь?! Это перс только для избранного (levyj1892@gmail.com)! Брысь отсюда!");
-        return;
-    }
-    selectChar('Hero');
+    // ВЕЛИКИЙ ТРОЛЛИНГ ОНЛАЙН БЕЗ РЕГИСТРАЦИИ И СМС
+    playSnd(sounds.err);
+    let pop = el('errorPopup');
+    pop.innerText = "This character is only available to the game owner.";
+    pop.style.bottom = '20px';
+    setTimeout(() => { 
+        pop.style.bottom = '-50px';
+        setTimeout(() => pop.innerText = "You are already playing as this character.", 300);
+    }, 6000);
 });
 
 el('junBtn').addEventListener('click', () => selectChar('Jun'));
@@ -441,7 +441,7 @@ const setupHeroUltAbilities = () => {
         playSnd(sounds.heroUlt2M);
         
         // ВОТ ОНО! Камера зумится жестко в черную лысину, а не в облака!
-        document.body.style.transformOrigin = `${state.pX}% 80%`;
+        document.body.style.transformOrigin = `${state.pX}vw 80vh`;
         document.body.style.transform = `scale(1.3)`;
         
         player.style.transform = 'rotate(15deg)';
@@ -716,13 +716,13 @@ const setupKratosAbilities = () => {
                 setTimeout(() => { 
                     dummy.style.bottom = '20%'; 
                     dealDamage(20);
-                    let ice = spawnEffect('https://www.dropbox.com/scl/fi/agm2hki7n6bj4vv9w8wvu/Picsart_26-03-31_17-59-17-250.png?rlkey=14roeq94xz8pon85fczkffqyc&st=qx41vfj7&dl=1', 480, 480, state.dX, 20, null);
+                    let ice = spawnEffect('https://www.dropbox.com/scl/fi/agm2hki7n6bj4vv9w8wvu/Picsart_26-03-31_17-59-17-250.png?rlkey=14roeq94xz8pon85fczkffqyc&st=qx41vfj7&dl=1', 480, 480, state.dX, 0, null);
                     dummy.style.transform = 'translateY(-30px)'; 
                     setTimeout(() => dummy.style.transform = 'none', 500);
                     setTimeout(() => { anim(ice, 'bottom', '-50%', 0.3); setTimeout(()=>ice.remove(), 300); }, 3000);
                 }, 100);
             } else {
-                let ice = spawnEffect('https://www.dropbox.com/scl/fi/agm2hki7n6bj4vv9w8wvu/Picsart_26-03-31_17-59-17-250.png?rlkey=14roeq94xz8pon85fczkffqyc&st=qx41vfj7&dl=1', 480, 480, state.pX, 20, null);
+                let ice = spawnEffect('https://www.dropbox.com/scl/fi/agm2hki7n6bj4vv9w8wvu/Picsart_26-03-31_17-59-17-250.png?rlkey=14roeq94xz8pon85fczkffqyc&st=qx41vfj7&dl=1', 480, 480, state.pX, 0, null);
                 setTimeout(() => { anim(ice, 'bottom', '-50%', 0.3); setTimeout(()=>ice.remove(), 300); }, 3000);
             }
             
@@ -1089,4 +1089,3 @@ const setupAgethaAbilities = () => {
 </script>
 </body>
 </html>
-
